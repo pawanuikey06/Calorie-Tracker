@@ -119,4 +119,6 @@ The app uses local storage for data persistence:
 
 ## License
 
-MIT License - feel free to use this project for personal or commercial purposes. 
+MIT License - Copyright (c) 2024 Pawan Kumar Uikey
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details. 
