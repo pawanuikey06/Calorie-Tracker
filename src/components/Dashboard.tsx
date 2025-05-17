@@ -236,7 +236,10 @@ const Dashboard: React.FC = () => {
                 <button 
                   onClick={() => {
                     setFoodEntries(prev => [{...foodData, timestamp: Date.now()}, ...prev]);
-                    toast.success("You've hit your daily calorie goal! 🎉");
+                    toast.success("You've hit your daily calorie goal! 🎉", {
+                      duration: 1500
+                    });
+                    toast.dismiss();
                   }}
                   className="flex-1 px-3 py-1.5 text-sm bg-green-600 text-white rounded-md hover:bg-green-700"
                 >
@@ -284,7 +287,10 @@ const Dashboard: React.FC = () => {
                   <button 
                     onClick={() => {
                       setFoodEntries(prev => [adjustedEntry, ...prev]);
-                      toast.success("You've hit your daily calorie goal! 🎉");
+                      toast.success("You've hit your daily calorie goal! 🎉", {
+                        duration: 1500
+                      });
+                      toast.dismiss();
                     }}
                     className="flex-1 px-3 py-1.5 text-sm bg-green-600 text-white rounded-md hover:bg-green-700"
                   >
@@ -393,7 +399,10 @@ const Dashboard: React.FC = () => {
               <button 
                 onClick={() => {
                   setFoodEntries(nonTodayEntries);
-                  toast.success("Today's entries have been reset!");
+                  toast.success("Today's entries have been reset!", {
+                    duration: 1500
+                  });
+                  toast.dismiss();
                 }}
                 className="flex-1 px-3 py-1.5 text-sm bg-destructive text-destructive-foreground rounded-md hover:bg-destructive/90"
               >
@@ -434,8 +443,11 @@ const Dashboard: React.FC = () => {
                   localStorage.removeItem('userProfile');
                   localStorage.removeItem(STORAGE_KEY);
                   
-                  // Show success message
-                  toast.success("All data cleared! Redirecting...");
+                  // Show success message and dismiss previous toast
+                  toast.dismiss();
+                  toast.success("All data cleared! Redirecting...", {
+                    duration: 1500
+                  });
                   
                   // Redirect to landing page after a short delay
                   setTimeout(() => {
