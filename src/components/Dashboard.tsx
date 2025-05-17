@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import FoodImageUpload from './FoodImageUpload';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
-
 import { useNavigate } from 'react-router-dom';
+import { toast } from 'sonner';
 
 interface FoodEntry {
   name: string;
@@ -52,78 +52,93 @@ const formatTime = (timestamp: number) => {
 
 const Dashboard: React.FC = () => {
   const navigate = useNavigate();
-  const [foodEntries, setFoodEntries] = useState<FoodEntry[]>([]);
+  const [foodEntries, setFoodEntries] = useState<FoodEntry[]>(JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]'));
   const [dailyGoal, setDailyGoal] = useState<number | null>(null);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
 
-  // Load user profile
+  // Load user profile and calculate daily goal
   useEffect(() => {
-    const userProfileStr = localStorage.getItem('userProfile');
-    if (!userProfileStr) {
-      navigate('/onboarding');
-      return;
-    }
-
-    try {
-      const profile: UserProfile = JSON.parse(userProfileStr);
-      setUserProfile(profile);
-      const calculatedGoal = calculateDailyCalories(profile);
-      
-      // Adjust goal based on user's target
-      let adjustedGoal = calculatedGoal;
-      if (profile.goal === 'lose') {
-        adjustedGoal = Math.round(calculatedGoal * 0.8); // 20% deficit
-      } else if (profile.goal === 'gain') {
-        adjustedGoal = Math.round(calculatedGoal * 1.2); // 20% surplus
+    const loadUserProfile = () => {
+      const userProfileStr = localStorage.getItem('userProfile');
+      if (!userProfileStr) {
+        navigate('/onboarding');
+        return;
       }
-      
-      setDailyGoal(adjustedGoal);
-    } catch (error) {
-      console.error('Error loading user profile:', error);
-      navigate('/onboarding');
-    }
+
+      try {
+        const profile: UserProfile = JSON.parse(userProfileStr);
+        setUserProfile(profile);
+        const calculatedGoal = calculateDailyCalories(profile);
+        
+        let adjustedGoal = calculatedGoal;
+        if (profile.goal === 'lose') {
+          adjustedGoal = Math.round(calculatedGoal * 0.8);
+        } else if (profile.goal === 'gain') {
+          adjustedGoal = Math.round(calculatedGoal * 1.2);
+        }
+        
+        setDailyGoal(adjustedGoal);
+      } catch (error) {
+        console.error('Error loading user profile:', error);
+        navigate('/onboarding');
+      }
+    };
+
+    loadUserProfile();
   }, [navigate]);
 
-  // Load entries from localStorage on mount
-  useEffect(() => {
-    const savedEntries = localStorage.getItem(STORAGE_KEY);
-    if (savedEntries) {
-      try {
-        const entries = JSON.parse(savedEntries);
-        console.log('Loaded entries from localStorage:', entries);
-        
-        // Validate entries
-        const validEntries = entries.filter((entry: any) => {
-          const isValid = 
-            entry &&
-            typeof entry.name === 'string' &&
-            typeof entry.calories === 'number' &&
-            typeof entry.protein === 'number' &&
-            typeof entry.carbs === 'number' &&
-            typeof entry.fat === 'number' &&
-            typeof entry.timestamp === 'number';
+  // Load food entries from localStorage
+  // useEffect(() => {
+  //   const loadFoodEntries = () => {
+  //     try {
+  //       const savedEntries = localStorage.getItem(STORAGE_KEY);
+  //       if (savedEntries) {
+  //         const entries = JSON.parse(savedEntries);
           
-          if (!isValid) {
-            console.error('Invalid entry found:', entry);
-          }
-          return isValid;
-        });
+  //         // // Validate entries
+  //         // const validEntries = entries.filter((entry: any) => {
+  //         //   const isValid = 
+  //         //     entry &&
+  //         //     typeof entry.name === 'string' &&
+  //         //     typeof entry.calories === 'number' &&
+  //         //     typeof entry.protein === 'number' &&
+  //         //     typeof entry.carbs === 'number' &&
+  //         //     typeof entry.fat === 'number' &&
+  //         //     typeof entry.timestamp === 'number';
+            
+  //         //   if (!isValid) {
+  //         //     console.error('Invalid entry found:', entry);
+  //         //   }
+  //         //   return isValid;
+  //         // });
 
-        if (validEntries.length !== entries.length) {
-          console.warn(`Filtered out ${entries.length - validEntries.length} invalid entries`);
-        }
+  //           if (validEntries.length !== entries.length) {
+  //             console.warn(`Filtered out ${entries.length - validEntries.length} invalid entries`);
+  //           }
 
-        setFoodEntries(validEntries);
-      } catch (error) {
-        console.error('Error loading saved entries:', error);
-      }
-    }
-  }, []);
+  //         setFoodEntries(entries);
+  //       }
+  //     } catch (error) {
+  //       console.error('Error loading saved entries:', error);
+  //       // Initialize with empty array if there's an error
+  //       setFoodEntries([]);
+  //     }
+  //   };
+
+  //   loadFoodEntries();
+  // }, []); // Only run once on component mount
 
   // Save entries to localStorage whenever they change
   useEffect(() => {
-    console.log('Saving entries to localStorage:', foodEntries);
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(foodEntries));
+    const saveFoodEntries = () => {
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(foodEntries));
+      } catch (error) {
+        console.error('Error saving entries:', error);
+      }
+    };
+
+    saveFoodEntries();
   }, [foodEntries]);
 
   // Get today's entries
@@ -146,10 +161,13 @@ const Dashboard: React.FC = () => {
   const remainingCalories = dailyGoal ? dailyGoal - totalCalories : 0;
   const calorieProgress = dailyGoal ? (totalCalories / dailyGoal) * 100 : 0;
 
+  // Calculate remaining calories for the day
+  const calculateRemainingCalories = () => {
+    const totalCalories = todayEntries.reduce((sum, entry) => sum + entry.calories, 0);
+    return dailyGoal ? dailyGoal - totalCalories : 0;
+  };
+
   const handleFoodRecognized = (foodData: Omit<FoodEntry, 'timestamp'>) => {
-    console.log('Received food data:', foodData);
-    
-    // Validate food data
     if (!foodData.name || typeof foodData.name !== 'string') {
       console.error('Invalid food data: missing or invalid name', foodData);
       return;
@@ -160,16 +178,83 @@ const Dashboard: React.FC = () => {
       return;
     }
 
+    const remainingCalories = calculateRemainingCalories();
+    
+    if (foodData.calories > remainingCalories && remainingCalories > 0) {
+      // Calculate suggested portion
+      const suggestedPortion = (remainingCalories / foodData.calories) * 100;
+      const roundedPortion = Math.floor(suggestedPortion);
+      
+      // Calculate adjusted nutrients
+      const adjustedEntry: FoodEntry = {
+        name: `${roundedPortion}% portion of ${foodData.name}`,
+        calories: Math.round((roundedPortion / 100) * foodData.calories),
+        protein: Math.round((roundedPortion / 100) * foodData.protein),
+        carbs: Math.round((roundedPortion / 100) * foodData.carbs),
+        fat: Math.round((roundedPortion / 100) * foodData.fat),
+        timestamp: Date.now()
+      };
+
+      toast.warning(
+        `Excess Calories Warning`,
+        {
+          description: (
+            <div className="space-y-4">
+              <div>
+                This food exceeds your remaining calories for today!
+                Suggested portion: {roundedPortion}%
+                • Original: {foodData.calories} cal
+                • Adjusted: {adjustedEntry.calories} cal
+                • Remaining: {remainingCalories} cal
+              </div>
+              <div className="flex gap-2">
+                <button 
+                  onClick={() => setFoodEntries(prev => [adjustedEntry, ...prev])}
+                  className="flex-1 px-3 py-1.5 text-sm bg-primary text-primary-foreground rounded-md hover:bg-primary/90"
+                >
+                  Add Suggested
+                </button>
+                <button 
+                  onClick={() => setFoodEntries(prev => [{...foodData, timestamp: Date.now()}, ...prev])}
+                  className="flex-1 px-3 py-1.5 text-sm bg-destructive text-destructive-foreground rounded-md hover:bg-destructive/90"
+                >
+                  Add Full Portion
+                </button>
+              </div>
+            </div>
+          ),
+          duration: 10000
+        }
+      );
+      return;
+    } else if (remainingCalories <= 0) {
+      toast.error("You've reached your calorie limit for today!", {
+        description: "Consider saving this meal for tomorrow or adjusting your portions.",
+        duration: 5000
+      });
+      return;
+    }
+
     const newEntry: FoodEntry = {
       ...foodData,
       timestamp: Date.now(),
     };
-    console.log('Created new entry:', newEntry);
-    setFoodEntries(prev => [newEntry, ...prev]); // Add new entries at the start
+
+    setFoodEntries(prevEntries => {
+      const updatedEntries = [newEntry, ...prevEntries];
+      return updatedEntries;
+    });
+
+    toast.success('Food added successfully!', {
+      description: `Added ${newEntry.name} (${newEntry.calories} calories)`
+    });
   };
 
   const handleDeleteEntry = (timestamp: number) => {
-    setFoodEntries(prev => prev.filter(entry => entry.timestamp !== timestamp));
+    setFoodEntries(prevEntries => {
+      const updatedEntries = prevEntries.filter(entry => entry.timestamp !== timestamp);
+      return updatedEntries;
+    });
   };
 
   if (!dailyGoal) {
