@@ -152,36 +152,31 @@ const Dashboard: React.FC = () => {
     );
   });
 
-  // Calculate totals
-  const totalCalories = todayEntries.reduce((sum, entry) => sum + entry.calories, 0);
-  const totalProtein = todayEntries.reduce((sum, entry) => sum + entry.protein, 0);
-  const totalCarbs = todayEntries.reduce((sum, entry) => sum + entry.carbs, 0);
-  const totalFat = todayEntries.reduce((sum, entry) => sum + entry.fat, 0);
-
-  const remainingCalories = dailyGoal ? dailyGoal - totalCalories : 0;
-  const calorieProgress = dailyGoal ? (totalCalories / dailyGoal) * 100 : 0;
+    // Get the current metrics and macros
 
   // Calculate daily metrics
   const calculateDailyMetrics = () => {
-    const totalCalories = todayEntries.reduce((sum, entry) => sum + entry.calories, 0);
-    const remainingCalories = dailyGoal ? dailyGoal - totalCalories : 0;
-    const percentageConsumed = dailyGoal ? (totalCalories / dailyGoal) * 100 : 0;
+    const totalCals = todayEntries.reduce((sum, entry) => sum + entry.calories, 0);
+    const remainingCals = dailyGoal ? dailyGoal - totalCals : 0;
+    const percentageConsumed = dailyGoal ? (totalCals / dailyGoal) * 100 : 0;
     const percentageRemaining = Math.max(0, 100 - percentageConsumed);
 
     return {
-      totalCalories,
-      remainingCalories,
+      totalCals,
+      remainingCals,
       percentageConsumed: Math.min(100, Math.round(percentageConsumed)),
-      percentageRemaining: Math.round(percentageRemaining),
-      isOverLimit: totalCalories > (dailyGoal || 0)
+      percentageRemaining: Math.round(percentageRemaining)
     };
   };
 
   // Calculate macros percentages
   const calculateMacroPercentages = () => {
-    const totalProtein = todayEntries.reduce((sum, entry) => sum + entry.protein, 0);
-    const totalCarbs = todayEntries.reduce((sum, entry) => sum + entry.carbs, 0);
-    const totalFat = todayEntries.reduce((sum, entry) => sum + entry.fat, 0);
+    // Calculate total macros from today's entries
+    const macroTotals = todayEntries.reduce((acc, entry) => ({
+      protein: acc.protein + entry.protein,
+      carbs: acc.carbs + entry.carbs,
+      fat: acc.fat + entry.fat
+    }), { protein: 0, carbs: 0, fat: 0 });
 
     // Standard macro ratios (protein 30%, carbs 50%, fat 20% of daily calories)
     const targetProtein = dailyGoal ? (dailyGoal * 0.3) / 4 : 0; // 4 calories per gram of protein
@@ -190,19 +185,19 @@ const Dashboard: React.FC = () => {
 
     return {
       protein: {
-        current: totalProtein,
+        current: Math.round(macroTotals.protein * 10) / 10,
         target: Math.round(targetProtein),
-        percentage: Math.min(100, Math.round((totalProtein / targetProtein) * 100) || 0)
+        percentage: Math.min(100, Math.round((macroTotals.protein / targetProtein) * 100) || 0)
       },
       carbs: {
-        current: totalCarbs,
+        current: Math.round(macroTotals.carbs * 10) / 10,
         target: Math.round(targetCarbs),
-        percentage: Math.min(100, Math.round((totalCarbs / targetCarbs) * 100) || 0)
+        percentage: Math.min(100, Math.round((macroTotals.carbs / targetCarbs) * 100) || 0)
       },
       fat: {
-        current: totalFat,
+        current: Math.round(macroTotals.fat * 10) / 10,
         target: Math.round(targetFat),
-        percentage: Math.min(100, Math.round((totalFat / targetFat) * 100) || 0)
+        percentage: Math.min(100, Math.round((macroTotals.fat / targetFat) * 100) || 0)
       }
     };
   };
@@ -222,10 +217,10 @@ const Dashboard: React.FC = () => {
       return;
     }
 
-    const { remainingCalories, percentageConsumed, isOverLimit } = calculateDailyMetrics();
+    const metrics = calculateDailyMetrics();
     
     // Perfect portion case - when food calories exactly match or are very close to remaining calories
-    if (Math.abs(foodData.calories - remainingCalories) <= 5) {
+    if (Math.abs(foodData.calories - metrics.remainingCals) <= 5) {
       toast.success(
         "Perfect Portion! 🎯",
         {
@@ -234,8 +229,8 @@ const Dashboard: React.FC = () => {
               <div>
                 This food will complete your daily calorie goal perfectly!
                 • Food Calories: {foodData.calories} cal
-                • Remaining: {remainingCalories} cal
-                • Will Complete: {formatPercentage(100 - percentageConsumed)} of daily goal
+                • Remaining: {metrics.remainingCals} cal
+                • Will Complete: {formatPercentage(100 - metrics.percentageConsumed)} of daily goal
               </div>
               <div className="flex gap-2">
                 <button 
@@ -256,9 +251,9 @@ const Dashboard: React.FC = () => {
       return;
     }
     
-    if (foodData.calories > remainingCalories && remainingCalories > 0) {
+    if (foodData.calories > metrics.remainingCals && metrics.remainingCals > 0) {
       // Calculate suggested portion with more precision
-      const suggestedPortion = (remainingCalories / foodData.calories) * 100;
+      const suggestedPortion = (metrics.remainingCals / foodData.calories) * 100;
       const roundedPortion = Math.round(suggestedPortion * 10) / 10; // Round to 1 decimal place
       
       // Calculate adjusted nutrients with more precision
@@ -272,7 +267,7 @@ const Dashboard: React.FC = () => {
       };
 
       // Check if adjusted portion would perfectly complete the goal
-      if (Math.abs(adjustedEntry.calories - remainingCalories) <= 5) {
+      if (Math.abs(adjustedEntry.calories - metrics.remainingCals) <= 5) {
         toast.success(
           "Perfect Adjusted Portion! 🎯",
           {
@@ -282,8 +277,8 @@ const Dashboard: React.FC = () => {
                   A {roundedPortion}% portion will complete your daily goal perfectly!
                   • Original: {foodData.calories} cal
                   • Adjusted: {adjustedEntry.calories} cal
-                  • Remaining: {remainingCalories} cal
-                  • Will Complete: {formatPercentage(100 - percentageConsumed)} of daily goal
+                  • Remaining: {metrics.remainingCals} cal
+                  • Will Complete: {formatPercentage(100 - metrics.percentageConsumed)} of daily goal
                 </div>
                 <div className="flex gap-2">
                   <button 
@@ -314,8 +309,8 @@ const Dashboard: React.FC = () => {
                 • Suggested: {roundedPortion}% portion
                 • Original: {foodData.calories} cal
                 • Adjusted: {adjustedEntry.calories} cal
-                • Remaining: {remainingCalories} cal
-                • Current Progress: {formatPercentage(percentageConsumed)}
+                • Remaining: {metrics.remainingCals} cal
+                • Current Progress: {formatPercentage(metrics.percentageConsumed)}
               </div>
               <div className="flex gap-2">
                 <button 
@@ -337,7 +332,7 @@ const Dashboard: React.FC = () => {
         }
       );
       return;
-    } else if (remainingCalories <= 0) {
+    } else if (metrics.remainingCals <= 0) {
       const overagePercentage = ((foodData.calories / dailyGoal!) * 100).toFixed(1);
       toast.error(
         "Daily Limit Reached",
@@ -465,7 +460,7 @@ const Dashboard: React.FC = () => {
     );
   };
 
-  // Get the current metrics
+  // Get the current metrics and macros
   const metrics = calculateDailyMetrics();
   const macros = calculateMacroPercentages();
 
@@ -549,7 +544,7 @@ const Dashboard: React.FC = () => {
                     <div className="absolute inset-0 flex items-center justify-center">
                       <div className="text-center">
                         <p className="text-4xl font-bold flex items-center gap-2">
-                          {totalCalories}
+                          {metrics.totalCals}
                           <span className="text-orange-500">🔥</span>
                         </p>
                         <p className="text-sm text-muted-foreground">of {dailyGoal} Kcal</p>
@@ -569,7 +564,7 @@ const Dashboard: React.FC = () => {
                         className="text-primary"
                         strokeWidth="12"
                         strokeDasharray={440}
-                        strokeDashoffset={440 - (440 * calorieProgress) / 100}
+                        strokeDashoffset={440 - (440 * metrics.percentageConsumed) / 100}
                         strokeLinecap="round"
                         stroke="currentColor"
                         fill="transparent"
@@ -587,13 +582,13 @@ const Dashboard: React.FC = () => {
                     <div className="space-y-2">
                       <p className="text-sm font-medium">Protein</p>
                       <div className="flex items-center gap-2">
-                        <span className="text-2xl font-bold">{totalProtein}</span>
+                        <span className="text-2xl font-bold">{macros.protein.current}</span>
                         <span className="text-sm text-muted-foreground">g</span>
                       </div>
                       <div className="h-1.5 bg-primary/20 rounded-full overflow-hidden">
                         <div
                           className="h-full bg-primary rounded-full"
-                          style={{ width: `${(totalProtein / (dailyGoal * 0.3)) * 100}%` }}
+                          style={{ width: `${macros.protein.percentage}%` }}
                         />
                       </div>
                     </div>
@@ -602,13 +597,13 @@ const Dashboard: React.FC = () => {
                     <div className="space-y-2">
                       <p className="text-sm font-medium">Carbs</p>
                       <div className="flex items-center gap-2">
-                        <span className="text-2xl font-bold">{totalCarbs}</span>
+                        <span className="text-2xl font-bold">{macros.carbs.current}</span>
                         <span className="text-sm text-muted-foreground">g</span>
                       </div>
                       <div className="h-1.5 bg-primary/20 rounded-full overflow-hidden">
                         <div
                           className="h-full bg-primary rounded-full"
-                          style={{ width: `${(totalCarbs / (dailyGoal * 0.5)) * 100}%` }}
+                          style={{ width: `${macros.carbs.percentage}%` }}
                         />
                       </div>
                     </div>
@@ -617,13 +612,13 @@ const Dashboard: React.FC = () => {
                     <div className="space-y-2">
                       <p className="text-sm font-medium">Fats</p>
                       <div className="flex items-center gap-2">
-                        <span className="text-2xl font-bold">{totalFat}</span>
+                        <span className="text-2xl font-bold">{macros.fat.current}</span>
                         <span className="text-sm text-muted-foreground">g</span>
                       </div>
                       <div className="h-1.5 bg-primary/20 rounded-full overflow-hidden">
                         <div
                           className="h-full bg-primary rounded-full"
-                          style={{ width: `${(totalFat / (dailyGoal * 0.2)) * 100}%` }}
+                          style={{ width: `${macros.fat.percentage}%` }}
                         />
                       </div>
                     </div>
@@ -718,7 +713,7 @@ const Dashboard: React.FC = () => {
                     <div className="relative bg-background rounded-full p-8">
                       <div className="space-y-1">
                         <p className="text-5xl font-bold text-primary">
-                          {remainingCalories > 0 ? remainingCalories : 0}
+                          {metrics.remainingCals > 0 ? metrics.remainingCals : 0}
                         </p>
                         <p className="text-sm text-muted-foreground font-medium">
                           calories remaining
@@ -734,11 +729,11 @@ const Dashboard: React.FC = () => {
                     </div>
                     <div className="space-y-1 bg-primary/5 rounded-lg p-3">
                       <p className="text-xs text-muted-foreground font-medium">Consumed</p>
-                      <p className="text-lg font-semibold">{totalCalories}</p>
+                      <p className="text-lg font-semibold">{metrics.totalCals}</p>
                     </div>
                     <div className="space-y-1 bg-primary/5 rounded-lg p-3">
                       <p className="text-xs text-muted-foreground font-medium">Progress</p>
-                      <p className="text-lg font-semibold">{Math.round(calorieProgress)}%</p>
+                      <p className="text-lg font-semibold">{metrics.percentageConsumed}%</p>
                     </div>
                   </div>
 
@@ -747,8 +742,8 @@ const Dashboard: React.FC = () => {
                       <div 
                         className="h-full bg-primary transition-all duration-500 ease-in-out rounded-full"
                         style={{ 
-                          width: `${Math.min(calorieProgress, 100)}%`,
-                          backgroundColor: remainingCalories < 0 ? 'var(--destructive)' : undefined
+                          width: `${Math.min(metrics.percentageConsumed, 100)}%`,
+                          backgroundColor: metrics.remainingCals < 0 ? 'var(--destructive)' : undefined
                         }}
                       />
                     </div>
