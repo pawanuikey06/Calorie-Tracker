@@ -161,10 +161,54 @@ const Dashboard: React.FC = () => {
   const remainingCalories = dailyGoal ? dailyGoal - totalCalories : 0;
   const calorieProgress = dailyGoal ? (totalCalories / dailyGoal) * 100 : 0;
 
-  // Calculate remaining calories for the day
-  const calculateRemainingCalories = () => {
+  // Calculate daily metrics
+  const calculateDailyMetrics = () => {
     const totalCalories = todayEntries.reduce((sum, entry) => sum + entry.calories, 0);
-    return dailyGoal ? dailyGoal - totalCalories : 0;
+    const remainingCalories = dailyGoal ? dailyGoal - totalCalories : 0;
+    const percentageConsumed = dailyGoal ? (totalCalories / dailyGoal) * 100 : 0;
+    const percentageRemaining = Math.max(0, 100 - percentageConsumed);
+
+    return {
+      totalCalories,
+      remainingCalories,
+      percentageConsumed: Math.min(100, Math.round(percentageConsumed)),
+      percentageRemaining: Math.round(percentageRemaining),
+      isOverLimit: totalCalories > (dailyGoal || 0)
+    };
+  };
+
+  // Calculate macros percentages
+  const calculateMacroPercentages = () => {
+    const totalProtein = todayEntries.reduce((sum, entry) => sum + entry.protein, 0);
+    const totalCarbs = todayEntries.reduce((sum, entry) => sum + entry.carbs, 0);
+    const totalFat = todayEntries.reduce((sum, entry) => sum + entry.fat, 0);
+
+    // Standard macro ratios (protein 30%, carbs 50%, fat 20% of daily calories)
+    const targetProtein = dailyGoal ? (dailyGoal * 0.3) / 4 : 0; // 4 calories per gram of protein
+    const targetCarbs = dailyGoal ? (dailyGoal * 0.5) / 4 : 0; // 4 calories per gram of carbs
+    const targetFat = dailyGoal ? (dailyGoal * 0.2) / 9 : 0; // 9 calories per gram of fat
+
+    return {
+      protein: {
+        current: totalProtein,
+        target: Math.round(targetProtein),
+        percentage: Math.min(100, Math.round((totalProtein / targetProtein) * 100) || 0)
+      },
+      carbs: {
+        current: totalCarbs,
+        target: Math.round(targetCarbs),
+        percentage: Math.min(100, Math.round((totalCarbs / targetCarbs) * 100) || 0)
+      },
+      fat: {
+        current: totalFat,
+        target: Math.round(targetFat),
+        percentage: Math.min(100, Math.round((totalFat / targetFat) * 100) || 0)
+      }
+    };
+  };
+
+  const formatPercentage = (value: number) => {
+    return `${Math.round(value)}%`;
   };
 
   const handleFoodRecognized = (foodData: Omit<FoodEntry, 'timestamp'>) => {
@@ -178,22 +222,87 @@ const Dashboard: React.FC = () => {
       return;
     }
 
-    const remainingCalories = calculateRemainingCalories();
+    const { remainingCalories, percentageConsumed, isOverLimit } = calculateDailyMetrics();
+    
+    // Perfect portion case - when food calories exactly match or are very close to remaining calories
+    if (Math.abs(foodData.calories - remainingCalories) <= 5) {
+      toast.success(
+        "Perfect Portion! 🎯",
+        {
+          description: (
+            <div className="space-y-4">
+              <div>
+                This food will complete your daily calorie goal perfectly!
+                • Food Calories: {foodData.calories} cal
+                • Remaining: {remainingCalories} cal
+                • Will Complete: {formatPercentage(100 - percentageConsumed)} of daily goal
+              </div>
+              <div className="flex gap-2">
+                <button 
+                  onClick={() => {
+                    setFoodEntries(prev => [{...foodData, timestamp: Date.now()}, ...prev]);
+                    toast.success("You've hit your daily calorie goal! 🎉");
+                  }}
+                  className="flex-1 px-3 py-1.5 text-sm bg-green-600 text-white rounded-md hover:bg-green-700"
+                >
+                  Add Perfect Portion
+                </button>
+              </div>
+            </div>
+          ),
+          duration: 8000
+        }
+      );
+      return;
+    }
     
     if (foodData.calories > remainingCalories && remainingCalories > 0) {
-      // Calculate suggested portion
+      // Calculate suggested portion with more precision
       const suggestedPortion = (remainingCalories / foodData.calories) * 100;
-      const roundedPortion = Math.floor(suggestedPortion);
+      const roundedPortion = Math.round(suggestedPortion * 10) / 10; // Round to 1 decimal place
       
-      // Calculate adjusted nutrients
+      // Calculate adjusted nutrients with more precision
       const adjustedEntry: FoodEntry = {
         name: `${roundedPortion}% portion of ${foodData.name}`,
         calories: Math.round((roundedPortion / 100) * foodData.calories),
-        protein: Math.round((roundedPortion / 100) * foodData.protein),
-        carbs: Math.round((roundedPortion / 100) * foodData.carbs),
-        fat: Math.round((roundedPortion / 100) * foodData.fat),
+        protein: Math.round((roundedPortion / 100) * foodData.protein * 10) / 10,
+        carbs: Math.round((roundedPortion / 100) * foodData.carbs * 10) / 10,
+        fat: Math.round((roundedPortion / 100) * foodData.fat * 10) / 10,
         timestamp: Date.now()
       };
+
+      // Check if adjusted portion would perfectly complete the goal
+      if (Math.abs(adjustedEntry.calories - remainingCalories) <= 5) {
+        toast.success(
+          "Perfect Adjusted Portion! 🎯",
+          {
+            description: (
+              <div className="space-y-4">
+                <div>
+                  A {roundedPortion}% portion will complete your daily goal perfectly!
+                  • Original: {foodData.calories} cal
+                  • Adjusted: {adjustedEntry.calories} cal
+                  • Remaining: {remainingCalories} cal
+                  • Will Complete: {formatPercentage(100 - percentageConsumed)} of daily goal
+                </div>
+                <div className="flex gap-2">
+                  <button 
+                    onClick={() => {
+                      setFoodEntries(prev => [adjustedEntry, ...prev]);
+                      toast.success("You've hit your daily calorie goal! 🎉");
+                    }}
+                    className="flex-1 px-3 py-1.5 text-sm bg-green-600 text-white rounded-md hover:bg-green-700"
+                  >
+                    Add Perfect Portion
+                  </button>
+                </div>
+              </div>
+            ),
+            duration: 8000
+          }
+        );
+        return;
+      }
 
       toast.warning(
         `Excess Calories Warning`,
@@ -202,17 +311,18 @@ const Dashboard: React.FC = () => {
             <div className="space-y-4">
               <div>
                 This food exceeds your remaining calories for today!
-                Suggested portion: {roundedPortion}%
+                • Suggested: {roundedPortion}% portion
                 • Original: {foodData.calories} cal
                 • Adjusted: {adjustedEntry.calories} cal
                 • Remaining: {remainingCalories} cal
+                • Current Progress: {formatPercentage(percentageConsumed)}
               </div>
               <div className="flex gap-2">
                 <button 
                   onClick={() => setFoodEntries(prev => [adjustedEntry, ...prev])}
                   className="flex-1 px-3 py-1.5 text-sm bg-primary text-primary-foreground rounded-md hover:bg-primary/90"
                 >
-                  Add Suggested
+                  Add {roundedPortion}% Portion
                 </button>
                 <button 
                   onClick={() => setFoodEntries(prev => [{...foodData, timestamp: Date.now()}, ...prev])}
@@ -228,10 +338,14 @@ const Dashboard: React.FC = () => {
       );
       return;
     } else if (remainingCalories <= 0) {
-      toast.error("You've reached your calorie limit for today!", {
-        description: "Consider saving this meal for tomorrow or adjusting your portions.",
-        duration: 5000
-      });
+      const overagePercentage = ((foodData.calories / dailyGoal!) * 100).toFixed(1);
+      toast.error(
+        "Daily Limit Reached",
+        {
+          description: `Adding this food would exceed your daily goal by ${overagePercentage}%. Consider saving it for tomorrow or adjusting portions.`,
+          duration: 5000
+        }
+      );
       return;
     }
 
@@ -240,13 +354,15 @@ const Dashboard: React.FC = () => {
       timestamp: Date.now(),
     };
 
+    const newPercentage = ((foodData.calories / dailyGoal!) * 100).toFixed(1);
+
     setFoodEntries(prevEntries => {
       const updatedEntries = [newEntry, ...prevEntries];
       return updatedEntries;
     });
 
     toast.success('Food added successfully!', {
-      description: `Added ${newEntry.name} (${newEntry.calories} calories)`
+      description: `Added ${newEntry.name} (${newEntry.calories} cal, ${newPercentage}% of daily goal)`
     });
   };
 
@@ -256,6 +372,102 @@ const Dashboard: React.FC = () => {
       return updatedEntries;
     });
   };
+
+  const handleResetDay = () => {
+    // Get all entries that are not from today
+    const nonTodayEntries = foodEntries.filter(entry => {
+      const entryDate = new Date(entry.timestamp);
+      const today = new Date();
+      return (
+        entryDate.getDate() !== today.getDate() ||
+        entryDate.getMonth() !== today.getMonth() ||
+        entryDate.getFullYear() !== today.getFullYear()
+      );
+    });
+
+    // Show confirmation toast
+    toast.warning(
+      "Reset Today's Entries?",
+      {
+        description: (
+          <div className="space-y-4">
+            <div>
+              This will remove all food entries for today. Historical data will be preserved.
+            </div>
+            <div className="flex gap-2">
+              <button 
+                onClick={() => {
+                  setFoodEntries(nonTodayEntries);
+                  toast.success("Today's entries have been reset!");
+                }}
+                className="flex-1 px-3 py-1.5 text-sm bg-destructive text-destructive-foreground rounded-md hover:bg-destructive/90"
+              >
+                Reset Day
+              </button>
+              <button 
+                onClick={() => toast.dismiss()}
+                className="flex-1 px-3 py-1.5 text-sm bg-primary text-primary-foreground rounded-md hover:bg-primary/90"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        ),
+        duration: 10000
+      }
+    );
+  };
+
+  const handleCompleteReset = () => {
+    toast.warning(
+      "Start Over?",
+      {
+        description: (
+          <div className="space-y-4">
+            <div>
+              This will clear all your data including:
+              • Profile information
+              • Food entries history
+              • Daily goals and progress
+              
+              You'll be redirected to the start page.
+            </div>
+            <div className="flex gap-2">
+              <button 
+                onClick={() => {
+                  // Clear all localStorage data
+                  localStorage.removeItem('userProfile');
+                  localStorage.removeItem(STORAGE_KEY);
+                  
+                  // Show success message
+                  toast.success("All data cleared! Redirecting...");
+                  
+                  // Redirect to landing page after a short delay
+                  setTimeout(() => {
+                    navigate('/');
+                  }, 1500);
+                }}
+                className="flex-1 px-3 py-1.5 text-sm bg-destructive text-destructive-foreground rounded-md hover:bg-destructive/90"
+              >
+                Yes, Start Over
+              </button>
+              <button 
+                onClick={() => toast.dismiss()}
+                className="flex-1 px-3 py-1.5 text-sm bg-primary text-primary-foreground rounded-md hover:bg-primary/90"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        ),
+        duration: 10000
+      }
+    );
+  };
+
+  // Get the current metrics
+  const metrics = calculateDailyMetrics();
+  const macros = calculateMacroPercentages();
 
   if (!dailyGoal) {
     return <div>Loading...</div>;
@@ -267,12 +479,20 @@ const Dashboard: React.FC = () => {
       <header className="border-b border-border">
         <div className="container mx-auto px-4 h-16 flex items-center justify-between">
           <h1 className="text-xl font-bold">🍽️ Calorie Tracker</h1>
-          <button
-            onClick={() => navigate('/onboarding')}
-            className="text-sm text-muted-foreground hover:text-foreground"
-          >
-            Update Profile
-          </button>
+          <div className="flex items-center gap-4">
+            <button
+              onClick={handleResetDay}
+              className="text-sm px-3 py-1.5 bg-destructive/10 text-destructive rounded-md hover:bg-destructive/20 transition-colors"
+            >
+              Reset Day
+            </button>
+            <button
+              onClick={handleCompleteReset}
+              className="text-sm px-3 py-1.5 bg-destructive text-destructive-foreground rounded-md hover:bg-destructive/90"
+            >
+              Start Over
+            </button>
+          </div>
         </div>
       </header>
 
