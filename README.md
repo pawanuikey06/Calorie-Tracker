@@ -1,6 +1,53 @@
 # Calorie Tracker App
 
-A modern, React-based calorie tracking application with real-time food recognition and nutritional tracking capabilities.
+A modern, React-based calorie tracking application with real-time food recognition and nutritional tracking capabilities, powered by advanced AI technology.
+
+## AI Technology Stack
+
+### Core AI Model
+- **Model**: Claude 3.5 Sonnet by Anthropic
+- **Type**: Large Language Model (LLM)
+- **Capabilities**:
+  - Natural language understanding and generation
+  - Code analysis and generation
+  - Context-aware responses
+  - Real-time problem solving
+  - Semantic code search
+  - Intelligent error handling
+
+### Integration Features
+- **Development Environment**: Cursor IDE
+- **Real-time Assistance**:
+  - Intelligent code completion
+  - Context-aware suggestions
+  - Automated error detection
+  - Code optimization recommendations
+  - Documentation generation
+
+### AI-Powered Features
+1. **Smart Food Recognition**:
+   - Real-time image analysis
+   - Nutritional content extraction
+   - Portion size estimation
+   - Food category classification
+
+2. **Intelligent Calorie Calculations**:
+   - Dynamic BMR adjustments
+   - Smart portion suggestions
+   - Adaptive goal tracking
+   - Personalized recommendations
+
+3. **Automated Data Processing**:
+   - Input validation
+   - Data normalization
+   - Error correction
+   - Pattern recognition
+
+4. **User Experience Enhancement**:
+   - Context-aware notifications
+   - Intelligent progress tracking
+   - Adaptive interface suggestions
+   - Personalized feedback
 
 ## Features
 
@@ -52,13 +99,31 @@ A modern, React-based calorie tracking application with real-time food recogniti
 - Complete data reset option
 - Automatic data validation
 
-## Tech Stack
+## Technical Implementation
 
-- React 18+
-- TypeScript
-- TailwindCSS
-- React Router v6
-- Sonner (Toast notifications)
+### Tech Stack
+- **Frontend Framework**: React 18+
+- **Type System**: TypeScript
+- **Styling**: TailwindCSS
+- **Routing**: React Router v6
+- **Notifications**: Sonner
+- **State Management**: React Hooks
+- **Data Persistence**: LocalStorage API
+- **Build Tool**: Vite/Create React App
+
+### Architecture
+- Component-based architecture
+- Custom hooks for business logic
+- Event-driven state management
+- Responsive design patterns
+- Progressive enhancement
+
+### Performance Optimizations
+- Memoized calculations
+- Lazy loading components
+- Optimized re-renders
+- Efficient data structures
+- Local storage caching
 
 ## Project Structure
 
@@ -92,22 +157,39 @@ frontend/
    npm run build
    ```
 
-## Usage
+## Usage Guide
 
+### Initial Setup
 1. First-time users will be directed to the onboarding process
 2. Complete your profile with personal details
-3. Start tracking your meals using:
+3. System calculates personalized calorie goals
+
+### Daily Usage
+1. Start tracking your meals using:
    - Manual entry
    - Food image recognition
-4. Monitor your progress through the dashboard
-5. Use the "Reset Day" feature to start fresh
-6. Use "Start Over" to completely reset your profile
+2. Monitor your progress through the dashboard
+3. Use the "Reset Day" feature to start fresh
+4. Use "Start Over" to completely reset your profile
 
-## Local Storage
-
+### Data Management
 The app uses local storage for data persistence:
 - `userProfile`: Stores user information and preferences
 - `calorie-tracker-entries`: Stores food entries and history
+
+## Development
+
+### Prerequisites
+- Node.js 16+
+- npm or yarn
+- Modern web browser
+
+### Best Practices
+- Follow TypeScript strict mode
+- Maintain component modularity
+- Write comprehensive documentation
+- Follow React best practices
+- Implement proper error handling
 
 ## Contributing
 
