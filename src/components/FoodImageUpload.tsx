@@ -2,7 +2,7 @@ import React, { useState, useCallback } from 'react';
 import { useDropzone } from 'react-dropzone';
 import ReactCrop, { Crop } from 'react-image-crop';
 import 'react-image-crop/dist/ReactCrop.css';
-import axios from 'axios';
+
 import { Card, CardContent } from './ui/card';
 import { Button } from './ui/button';
 import { useToast } from './ui/use-toast';
